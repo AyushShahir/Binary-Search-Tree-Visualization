@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>BST Visualizer — Fixed step-by-step insert</title>
+  <style>
+    :root{
+      --bg1: #f8fbff;
+      --bg2: #eef7f4;
+      --panel: #f0f8ff;
+      --muted: #51606a;
+      --accent: #3aa0f2;
+      --success: #4caf50;
+      --danger: #ff6b6b;
+    }
+    body{
+      margin:0;
+      font-family: Inter, Arial, sans-serif;
+      background: linear-gradient(135deg,var(--bg1),var(--bg2));
+      color: #123;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:20px;
+    }
+    h2{margin:6px 0 18px 0;color:#114066}
+
+    #controls{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+    .box{background:var(--panel);padding:12px;border-radius:10px;box-shadow:0 6px 18px rgba(2,10,20,0.06)}
+    input[type=text]{padding:8px;border-radius:8px;border:1px solid #cfdce6;width:260px}
+    button{padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:white;font-weight:600;cursor:pointer;box-shadow:0 6px 14px rgba(3,102,171,0.12);transition:transform .15s ease, box-shadow .15s}
+    button:hover{transform:translateY(-3px)}
+    button.secondary{background:#6b7280}
+    button.danger{background:var(--danger)}
+    button.success{background:var(--success)}
+    button:disabled{background:#c7ccd0;cursor:not-allowed;transform:none;box-shadow:none}
+
+    /* panels */
+    .panel{display:inline-block;padding:12px;border-radius:10px;background:#fff;margin:8px;min-width:260px}
+    pre{margin:0;font-size:13px;line-height:1.4;color:var(--muted);white-space:pre-wrap}
+
+    #explain{min-height:36px;margin-top:12px;padding:10px;border-left:4px solid var(--success);background:#f4fff4;border-radius:8px;width:980px}
+
+    /* svg */
+    svg{background:#fcfeff;border-radius:10px;box-shadow:0 8px 20px rgba(2,10,23,0.06);}
+
+    /* Node styles & transitions */
+    .node-circle{ fill:#bfe9ff; stroke:#1f3a44; stroke-width:2; transition:fill .35s ease, r .25s ease, stroke-width .25s }
+    .node-text{ font-weight:700; fill:#0b2430; font-size:13px; text-anchor:middle; dominant-baseline:middle; pointer-events:none }
+
+    /* highlight variants */
+    .compare { fill: #ffd27a; }   /* comparing/current */
+    .move { fill: #a5d2ff; }      /* moving to child */
+    .insert { fill: #9ff0b0; }    /* newly inserted */
+
+    line.edge{ stroke:#8aa0a6; stroke-width:2; transition:stroke .3s ease }
+
+    /* algorithm line highlight */
+    .alg-line{ padding:2px 6px; border-radius:6px; display:block; color:var(--muted) }
+    .alg-line.active{ background: #fff7b2; color:#0b2430; font-weight:700 }
+
+    /* small helper */
+    .controls-col{display:flex;flex-direction:column;gap:8px;align-items:center}
+    .small{font-size:13px;padding:6px 8px;border-radius:8px}
+
+  </style>
+</head>
+<body>
+  <h2>Binary Search Tree Visualization - Insertion and Deletion</h2>
+
+  <div id="controls">
+    <div class="box">
+      <div style="font-weight:700;margin-bottom:6px">Insert values</div>
+      <input id="insVals" placeholder="e.g. 100 50 150 25 75" value="100 50 150 25 75">
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button id="prepareIns">Prepare Insert Steps</button>
+        <button id="nextIns" disabled>Next Insert Step</button>
+        <button id="buildIns">Build Full Insert</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <div style="font-weight:700;margin-bottom:6px">Delete values</div>
+      <input id="delVal" placeholder="value to delete">
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button id="prepareDel" class="secondary">Prepare Delete</button>
+        <button id="nextDel" class="secondary" disabled>Next Delete</button>
+        <button id="execDel" class="danger">Delete Now</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <div style="font-weight:700;margin-bottom:6px">Tree actions</div>
+      <div style="display:flex;gap:8px;flex-direction:column;align-items:center">
+        <button id="resetBtn" class="danger small">Reset</button>
+        <button id="autoLayout" class="success small">Auto Layout</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+    <div class="panel" style="width:420px">
+      <strong>Insertion Algorithm</strong>
+      <pre style="margin-top:8px;color:var(--muted)">
+1. if root == null → root = new Node(val)
+2. else current = root
+3. while true: compare val with current
+4. if val < current.val → go left
+5.   if current.left == null → insert left
+6.   else current = current.left
+7. else → go right
+8.   if current.right == null → insert right
+9.   else current = current.right
+      </pre>
+    </div>
+
+    <div class="panel" style="width:420px">
+      <strong>Deletion Algorithm</strong>
+      <pre style="margin-top:8px;color:var(--muted)">
+1. Find node to delete by searching from root
+2. If node has no children → remove it (leaf)
+3. If node has one child → replace node with its child
+4. If node has two children → find inorder successor (min in right subtree)
+5. Replace node's value with successor's value
+6. Delete the successor node
+      </pre>
+    </div>
+  </div>
+
+  <div id="explain" class="box" style="width:980px;margin-top:12px">
+    Explanation will appear here.
+  </div>
+
+  <svg id="svg" width="1000" height="520" style="margin-top:12px"></svg>
+
+<script>
+/* ---------- Data structure ---------- */
+function Node(val){
+  this.val = val;
+  this.left = null;
+  this.right = null;
+  // layout coordinates used for drawing
+  this.x = 0;
+  this.y = 0;
+}
+
+/* ---------- Global state ---------- */
+let treeRoot = null;           // visible tree that will be mutated when we process insert actions
+let insActions = [];           // queued actions for step-by-step insert
+let insIdx = 0;
+
+let delActions = []; let delIdx = 0; // kept minimal
+
+/* ---------- Helpers ---------- */
+function parseInputValues(s){
+  if(!s) return [];
+  return s.split(/[ ,]+/).map(t=>t.trim()).filter(Boolean).map(v => (v!=='' && !Number.isNaN(Number(v)) ? Number(v) : v));
+}
+function setExplain(text){ document.getElementById('explain').innerText = text; }
+function clearSVG(){ const svg = document.getElementById('svg'); while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+/* ---------- Layout (safe spacing, no overlaps) ---------- */
+// Use inorder-based x assignment for even spacing.
+function computePositions(root){
+  if(!root) return;
+  let cnt = 0;
+  function inorder(n, depth){
+    if(!n) return;
+    inorder(n.left, depth+1);
+    n._ix = ++cnt;
+    n._depth = depth;
+    inorder(n.right, depth+1);
+  }
+  inorder(root,0);
+
+  const gapX = 80; const margin = 60; const levelY = 80;
+  function assign(n){
+    if(!n) return;
+    n.x = margin + n._ix * gapX;
+    n.y = 40 + n._depth * levelY;
+    assign(n.left);
+    assign(n.right);
+  }
+  assign(root);
+}
+
+/* ---------- Drawing ---------- */
+function drawTree(highlight){
+  const svg = document.getElementById('svg');
+  clearSVG();
+  if(!treeRoot) return;
+  // draw edges then nodes
+  function drawEdges(n){
+    if(!n) return;
+    if(n.left){
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', n.x);
+      line.setAttribute('y1', n.y);
+      line.setAttribute('x2', n.left.x);
+      line.setAttribute('y2', n.left.y);
+      line.classList.add('edge');
+      svg.appendChild(line);
+      drawEdges(n.left);
+    }
+    if(n.right){
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', n.x);
+      line.setAttribute('y1', n.y);
+      line.setAttribute('x2', n.right.x);
+      line.setAttribute('y2', n.right.y);
+      line.classList.add('edge');
+      svg.appendChild(line);
+      drawEdges(n.right);
+    }
+  }
+  function drawNodes(n){
+    if(!n) return;
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('transform', `translate(${n.x},${n.y})`);
+    // circle
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('r', 20);
+    c.classList.add('node-circle');
+    // apply highlight if requested
+    if(highlight && highlight.val === n.val){
+      if(highlight.type === 'compare') c.classList.add('compare');
+      else if(highlight.type === 'move') c.classList.add('move');
+      else if(highlight.type === 'insert') c.classList.add('insert');
+    }
+    g.appendChild(c);
+    // text
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.classList.add('node-text');
+    t.setAttribute('y', 2);
+    t.textContent = n.val;
+    g.appendChild(t);
+
+    svg.appendChild(g);
+    drawNodes(n.left);
+    drawNodes(n.right);
+  }
+
+  drawEdges(treeRoot);
+  drawNodes(treeRoot);
+}
+
+/* ---------- Action builder (simulate on separate simRoot) ---------- */
+function buildInsertActions(values){
+  insActions = [];
+  insIdx = 0;
+  let simRoot = null;
+
+  for(const val of values){
+    if(simRoot === null){
+      // first value becomes root
+      insActions.push({type:'setroot', val});
+      simRoot = new Node(val);
+      continue;
+    }
+    insActions.push({type:'start', val});
+    let cur = simRoot;
+    while(true){
+      insActions.push({type:'compare', current: cur.val, val});
+      if( compareValues(val, cur.val) < 0 ){
+        insActions.push({type:'decision', dir:'left', current: cur.val});
+        if(cur.left === null){
+          insActions.push({type:'insert', parent: cur.val, side:'left', val});
+          cur.left = new Node(val);
+          break;
+        } else {
+          insActions.push({type:'move', from: cur.val, to: cur.left.val});
+          cur = cur.left;
+        }
+      } else {
+        insActions.push({type:'decision', dir:'right', current: cur.val});
+        if(cur.right === null){
+          insActions.push({type:'insert', parent: cur.val, side:'right', val});
+          cur.right = new Node(val);
+          break;
+        } else {
+          insActions.push({type:'move', from: cur.val, to: cur.right.val});
+          cur = cur.right;
+        }
+      }
+    }
+  }
+}
+
+/* comparison (numbers vs strings) */
+function compareValues(a,b){
+  if(typeof a === 'number' && typeof b === 'number') return a - b;
+  // Try to coerce numeric-like strings to numbers only if both are numbers after coercion.
+  const aN = Number(a), bN = Number(b);
+  if(!Number.isNaN(aN) && !Number.isNaN(bN)) return aN - bN;
+  return String(a).localeCompare(String(b));
+}
+
+/* ---------- Step processor (these mutate visual treeRoot in the same order as simRoot actions) ---------- */
+function processNextInsertAction(){
+  if(insIdx >= insActions.length){
+    setExplain('All insert steps completed.');
+    document.getElementById('nextIns').disabled = true;
+    highlightAlgLine(null);
+    return;
+  }
+  const a = insActions[insIdx++];
+  if(a.type === 'setroot'){
+    // create root (first value)
+    treeRoot = new Node(a.val);
+    computePositions(treeRoot);
+    drawTree({val: a.val, type:'insert'});
+    setExplain(`Tree empty → set root = ${a.val}`);
+    highlightAlgLine(1);
+    return;
+  }
+  if(a.type === 'start'){
+    highlightAlgLine(2);
+    setExplain(`Start inserting ${a.val} (start at root)`);
+    drawTree(null);
+    return;
+  }
+  if(a.type === 'compare'){
+    highlightAlgLine(3);
+    setExplain(`Compare ${a.val} with current node ${a.current}`);
+    // find the node in the visible tree by value
+    const node = findNode(treeRoot, a.current);
+    computePositions(treeRoot);
+    drawTree(node ? {val: node.val, type:'compare'} : null);
+    return;
+  }
+  if(a.type === 'decision'){
+    if(a.dir === 'left') highlightAlgLine(4);
+    else highlightAlgLine(7);
+    setExplain(`${a.val} ${a.dir==='left' ? '<' : '>='} ${a.current} → go ${a.dir}`);
+    const node = findNode(treeRoot, a.current);
+    drawTree(node ? {val: node.val, type:'compare'} : null);
+    return;
+  }
+  if(a.type === 'move'){
+    // show that we move to child
+    // pick the 'to' node in visible tree
+    const toNode = findNode(treeRoot, a.to);
+    highlightAlgLine( (a.to < a.from) ? 6 : 9 ); // best-effort mapping but we don't rely on numeric compare; highlight generic move
+    setExplain(`Move to ${a.to}`);
+    drawTree(toNode ? {val: toNode.val, type:'move'} : null);
+    return;
+  }
+  if(a.type === 'insert'){
+    // perform the actual insertion into the visible tree (treeRoot)
+    const parent = findNode(treeRoot, a.parent);
+    if(parent){
+      if(a.side === 'left') parent.left = new Node(a.val);
+      else parent.right = new Node(a.val);
+      computePositions(treeRoot);
+      drawTree({val: a.val, type:'insert'});
+      setExplain(`Inserted ${a.val} as ${a.side} child of ${a.parent}`);
+      // highlight pseudocode line for insert
+      highlightAlgLine(a.side==='left' ? 5 : 8);
+    } else {
+      // fallback: if parent not found (shouldn't happen), insert normally
+      setExplain(`(Warning) parent ${a.parent} not found — inserting anyway`);
+      treeRoot = insertImmediate(treeRoot, a.val);
+      computePositions(treeRoot);
+      drawTree({val:a.val, type:'insert'});
+    }
+    return;
+  }
+}
+
+/* ---------- Node finders & immediate insert ---------- */
+function findNode(root, val){
+  if(!root) return null;
+  if(root.val === val) return root;
+  return findNode(root.left, val) || findNode(root.right, val);
+}
+
+function insertImmediate(node, val){
+  if(!node) return new Node(val);
+  if(compareValues(val, node.val) < 0) node.left = insertImmediate(node.left, val);
+  else node.right = insertImmediate(node.right, val);
+  return node;
+}
+
+/* ---------- Build Full (instant) ---------- */
+function buildFullInsertFromInput(){
+  const vals = parseInputValues(document.getElementById('insVals').value);
+  if(!vals.length) { setExplain('Enter some values'); return; }
+  treeRoot = null;
+  for(const v of vals) treeRoot = insertImmediate(treeRoot, v);
+  computePositions(treeRoot);
+  drawTree(null);
+  setExplain('Tree built instantly (in insertion order). Root is first value.');
+  // disable next step since we've already applied
+  document.getElementById('nextIns').disabled = true;
+}
+
+/* ---------- Algorithm highlight (simple) ---------- */
+function highlightAlgLine(n){
+  const all = document.querySelectorAll('#algIns .alg-line');
+  all.forEach(el=>el.classList.toggle('active', Number(el.dataset.line) === n));
+}
+
+/* ---------- Delete (kept but unchanged) ---------- */
+/* Minimal delete action builder + step executor — left unchanged from before but fixed to use treeRoot state */
+function buildDeleteActions(value){
+  delActions = []; delIdx = 0;
+  let cur = treeRoot;
+  if(!cur){ delActions.push({type:'notfound', value}); return; }
+  delActions.push({type:'startSearch', value});
+  while(cur && cur.val !== value){
+    delActions.push({type:'searchCompare', current: cur.val, value});
+    if(compareValues(value, cur.val) < 0){ delActions.push({type:'go', dir:'left', current: cur.val}); cur = cur.left; }
+    else { delActions.push({type:'go', dir:'right', current: cur.val}); cur = cur.right; }
+  }
+  if(!cur){ delActions.push({type:'notfound', value}); return; }
+  delActions.push({type:'found', node: cur.val});
+  const hasLeft = !!cur.left; const hasRight = !!cur.right;
+  if(!hasLeft && !hasRight) delActions.push({type:'deleteLeaf', node:cur.val});
+  else if((hasLeft && !hasRight) || (!hasLeft && hasRight)) delActions.push({type:'deleteSingleChild', node:cur.val});
+  else {
+    delActions.push({type:'deleteTwoChildren', node:cur.val});
+    let succParent = cur; let succ = cur.right;
+    while(succ.left){ delActions.push({type:'succStep', at: succ.val}); succParent = succ; succ = succ.left; }
+    delActions.push({type:'successor', succ: succ.val, succParent: succParent.val});
+    delActions.push({type:'replaceWithSucc', node:cur.val, succ: succ.val});
+    delActions.push({type:'deleteSuccessor', succ:succ.val, parent: succParent.val});
+  }
+}
+
+function processNextDeleteAction(){
+  if(delIdx >= delActions.length){
+    setExplain('Delete steps finished.');
+    document.getElementById('nextDel').disabled = true;
+    return;
+  }
+  const a = delActions[delIdx++];
+  if(a.type === 'startSearch'){ setExplain(`Start search for ${a.value}`); drawTree(null); return; }
+  if(a.type === 'searchCompare'){ setExplain(`Compare ${a.value} with ${a.current}`); const node = findNode(treeRoot, a.current); drawTree(node ? {val: node.val, type:'compare'} : null); return; }
+  if(a.type === 'go'){ setExplain(`Go ${a.dir} from ${a.current}`); const node = findNode(treeRoot, a.current); drawTree(node ? {val: node.val, type:'move'} : null); return; }
+  if(a.type === 'notfound'){ setExplain(`${a.value} not found`); drawTree(null); return; }
+  if(a.type === 'found'){ setExplain(`Found node ${a.node}`); drawTree({val:a.node, type:'insert'}); return; }
+  if(a.type === 'deleteLeaf'){ setExplain(`Deleting leaf ${a.node}`); removeNode(a.node); computePositions(treeRoot); drawTree(null); return; }
+  if(a.type === 'deleteSingleChild'){ setExplain(`Deleting ${a.node} and replace with its child`); deleteNodeSingleChild(a.node); computePositions(treeRoot); drawTree(null); return; }
+  if(a.type === 'deleteTwoChildren'){ setExplain(`Node ${a.node} has two children — find successor`); drawTree({val:a.node, type:'insert'}); return; }
+  if(a.type === 'succStep'){ setExplain(`Searching successor at ${a.at}`); drawTree({val:a.at, type:'move'}); return; }
+  if(a.type === 'successor'){ setExplain(`Successor is ${a.succ}`); drawTree({val:a.succ, type:'insert'}); return; }
+  if(a.type === 'replaceWithSucc'){ replaceNodeValue(a.node, a.succ); computePositions(treeRoot); drawTree({val:a.succ, type:'insert'}); setExplain(`Replaced ${a.node} value with ${a.succ}`); return; }
+  if(a.type === 'deleteSuccessor'){ removeNode(a.succ); computePositions(treeRoot); drawTree(null); setExplain(`Removed successor ${a.succ}`); return; }
+}
+
+/* remove helpers */
+function removeNode(val){ treeRoot = removeNodeRec(treeRoot, val); }
+function removeNodeRec(node, val){
+  if(!node) return null;
+  const cmp = compareValues(val, node.val);
+  if(cmp < 0) node.left = removeNodeRec(node.left, val);
+  else if(cmp > 0) node.right = removeNodeRec(node.right, val);
+  else {
+    if(!node.left && !node.right) return null;
+    if(!node.left) return node.right;
+    if(!node.right) return node.left;
+    // two children
+    let succ = node.right;
+    while(succ.left) succ = succ.left;
+    node.val = succ.val;
+    node.right = removeNodeRec(node.right, succ.val);
+  }
+  return node;
+}
+function deleteNodeSingleChild(val){ treeRoot = deleteSingleRec(treeRoot, val); }
+function deleteSingleRec(node, val){
+  if(!node) return null;
+  const cmp = compareValues(val, node.val);
+  if(cmp < 0) node.left = deleteSingleRec(node.left, val);
+  else if(cmp > 0) node.right = deleteSingleRec(node.right, val);
+  else {
+    if(!node.left) return node.right;
+    if(!node.right) return node.left;
+  }
+  return node;
+}
+function replaceNodeValue(nodeVal, newVal){ const n = findNode(treeRoot, nodeVal); if(n) n.val = newVal; }
+
+/* ---------- Instant insert helper ---------- */
+function insertImmediate(node, val){
+  if(!node) return new Node(val);
+  if(compareValues(val, node.val) < 0) node.left = insertImmediate(node.left, val);
+  else node.right = insertImmediate(node.right, val);
+  return node;
+}
+
+/* ---------- UI bindings ---------- */
+document.getElementById('prepareIns').addEventListener('click', ()=>{
+  const vals = parseInputValues(document.getElementById('insVals').value);
+  if(!vals.length){ setExplain('Enter values to insert'); return; }
+  // reset visible tree to start fresh for the step sequence (so root = first value)
+  treeRoot = null;
+  computePositions(treeRoot);
+  drawTree(null);
+  buildInsertActions(vals);
+  insIdx = 0;
+  document.getElementById('nextIns').disabled = false;
+  setExplain('Insert steps prepared. Press Next Insert Step to run.');
+  highlightAlgLine(null);
+});
+
+document.getElementById('nextIns').addEventListener('click', ()=>{
+  processNextInsertAction();
+});
+
+document.getElementById('buildIns').addEventListener('click', ()=>{
+  const vals = parseInputValues(document.getElementById('insVals').value);
+  if(!vals.length){ setExplain('Enter values'); return; }
+  treeRoot = null;
+  for(const v of vals) treeRoot = insertImmediate(treeRoot, v);
+  computePositions(treeRoot);
+  drawTree(null);
+  setExplain('Built full tree. Root is first value.');
+  document.getElementById('nextIns').disabled = true;
+  highlightAlgLine(null);
+});
+
+/* delete UI */
+document.getElementById('prepareDel').addEventListener('click', ()=>{
+  const v = document.getElementById('delVal').value.trim();
+  if(!v){ setExplain('Enter a value to delete'); return; }
+  const parsed = (v!=='' && !Number.isNaN(Number(v))) ? Number(v) : v;
+  buildDeleteActions(parsed);
+  delIdx = 0;
+  document.getElementById('nextDel').disabled = false;
+  setExplain('Delete steps prepared.');
+});
+
+document.getElementById('nextDel').addEventListener('click', ()=>{ processNextDeleteAction(); });
+
+document.getElementById('execDel').addEventListener('click', ()=>{
+  const v = document.getElementById('delVal').value.trim();
+  if(!v){ setExplain('Enter a value to delete'); return; }
+  const parsed = (v!=='' && !Number.isNaN(Number(v))) ? Number(v) : v;
+  removeNode(parsed);
+  computePositions(treeRoot);
+  drawTree(null);
+  setExplain(`Deleted ${parsed} (if it existed).`);
+});
+
+/* reset & layout */
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  treeRoot = null; insActions=[]; delActions=[]; insIdx=delIdx=0;
+  document.getElementById('nextIns').disabled = true;
+  document.getElementById('nextDel').disabled = true;
+  computePositions(treeRoot); drawTree(null); setExplain('Reset.');
+  highlightAlgLine(null);
+});
+document.getElementById('autoLayout').addEventListener('click', ()=>{
+  if(treeRoot){ computePositions(treeRoot); drawTree(null); setExplain('Layout updated.'); }
+});
+
+/* initialize */
+setExplain('Enter values and press Prepare Insert Steps (root will be first value).');
+
+/* ---------- End of script ---------- */
+</script>
+</body>
+</html>
