@@ -1,4 +1,4 @@
-\# Binary Search Tree Visualization
+### Binary Search Tree Visualization
 
 
 
@@ -107,10 +107,4 @@ Binary-Search-Tree-Visualization/
 \- \[ ] Mobile-friendly responsive layout
 
 
-
-\## License
-
-
-
-No license specified yet — consider adding one (e.g. MIT) if you'd like others to reuse this freely.
 
